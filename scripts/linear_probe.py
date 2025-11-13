@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from datasets import load_dataset
-from sklearn.decomposition import PCA
+from umap import UMAP
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 from torch.utils.data import DataLoader
@@ -22,8 +22,8 @@ from astropt.model_utils import load_astropt
 
 if __name__ == "__main__":
     device = 'cpu'
-    # if torch.cuda.is_available():
-    #     device = 'cuda'
+    if torch.cuda.is_available():
+        device = 'cuda'
     if torch.backends.mps.is_available():
         device = 'mps'
 
@@ -128,12 +128,12 @@ if __name__ == "__main__":
     )
 
     # Now let's visualise the embedding space by performing PCA and plotting
-    pca = PCA(n_components=2)
-    X_pca = pca.fit_transform(zss)
+    umap = UMAP(n_components=2)
+    X_umap = umap.fit_transform(zss)
 
     # Plot ground truth magnitude with PCA components
     vmax = np.percentile(yss, 95)
-    plt.scatter(X_pca[:, 0], X_pca[:, 1], c=yss, vmax=vmax, cmap="viridis")
+    plt.scatter(X_umap[:, 0], X_umap[:, 1], c=yss, vmax=vmax, cmap="viridis")
     plt.colorbar(label="mag_g")
     plt.savefig("figures/pca_mag_g.png", dpi=300)
     plt.show()
