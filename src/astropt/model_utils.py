@@ -71,8 +71,12 @@ def load_astropt(
     try:
         model.load_state_dict(state_dict)
     except RuntimeError as err:
-        print(err)
-        print("Assuming we are loading a version of AstroPT < 3.0, so altering state dict key names to fit...")
+        # Silence warning about loading older models
+        # print(err)
+        # print("Assuming we are loading a version of AstroPT < 3.0, so altering state dict key names to fit...")
+
+        # Error will be raised if the key name change did not fix the problem
+
         state_dict["encoders.images.c_fc.weight"] = state_dict.pop("transformer.wte.images.c_fc.weight")
         state_dict["encoders.images.c_proj.weight"] = state_dict.pop("transformer.wte.images.c_proj.weight")
         state_dict["decoders.images.c_fc.weight"] = state_dict.pop("lm_head.images.c_fc.weight")
