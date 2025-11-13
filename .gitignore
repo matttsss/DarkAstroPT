@@ -165,9 +165,14 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# logs/data
+# VSCode
+.vscode/
+
+# logs/data/cache/figures
 logs/
 data/
+cache/
+figures/
 
 # misc
 python/

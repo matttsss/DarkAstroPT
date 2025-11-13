@@ -21,6 +21,14 @@ from astropt.local_datasets import GalaxyImageDataset
 from astropt.model_utils import load_astropt
 
 if __name__ == "__main__":
+    device = 'cpu'
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+
+    print(f"Using device: {device}")
+
     # set up HF galaxies in test set to be processed
     def normalise(x):
         std, mean = torch.std_mean(x, dim=1, keepdim=True)
@@ -33,6 +41,15 @@ if __name__ == "__main__":
             ]
         )
         return transform
+
+    def batch_to_device(batch, device):
+        if isinstance(batch, torch.Tensor):
+            return batch.to(device, non_blocking=True)
+        if isinstance(batch, dict):
+            return {k: batch_to_device(v, device) for k, v in batch.items()}
+        if isinstance(batch, (list,tuple)):
+            return type(batch)(batch_to_device(v, device) for v in batch)
+        return batch
 
     def _process_galaxy_wrapper(idx, func):
         """This function ensures that the image is tokenised in the same way as
@@ -48,7 +65,7 @@ if __name__ == "__main__":
             "mag_g": mag_g,
         }
 
-    model = load_astropt("Smith42/astroPT_v2.0", path="astropt/095M")
+    model = load_astropt("Smith42/astroPT_v2.0", path="astropt/095M").to(device)
     galproc = GalaxyImageDataset(
         None,
         spiral=True,
@@ -79,21 +96,22 @@ if __name__ == "__main__":
         probe.fit(zs, ys)
         return probe
 
-    if not isfile("zss.npy"):
+    if not isfile("cache/zss.npy"):
         # here we run a loop over the dataset to generate our embeddings
         zss = []
         yss = []
         for B in tqdm(dl):
-            zs = model.generate_embeddings(B)["images"].detach().numpy()
+            B = batch_to_device(B, device)
+            zs = model.generate_embeddings(B)["images"].detach().cpu().numpy()
             zss.append(zs)
-            yss.append(B["mag_g"].detach().numpy())
+            yss.append(B["mag_g"].detach().cpu().numpy())
         zss = np.concatenate(zss, axis=0)
         yss = np.concatenate(yss, axis=0)
-        np.save("zss.npy", zss)
-        np.save("yss.npy", yss)
+        np.save("cache/zss.npy", zss)
+        np.save("cache/yss.npy", yss)
     else:
-        zss = np.load("zss.npy")
-        yss = np.load("yss.npy")
+        zss = np.load("cache/zss.npy")
+        yss = np.load("cache/yss.npy")
         print(
             "Embeddings file (zss.npy) detected so moving straight to linear probe and viz"
         )
@@ -116,9 +134,11 @@ if __name__ == "__main__":
     vmax = np.percentile(yss, 95)
     plt.scatter(X_pca[:, 0], X_pca[:, 1], c=yss, vmax=vmax, cmap="viridis")
     plt.colorbar(label="mag_g")
+    plt.savefig("figures/pca_mag_g.png", dpi=300)
     plt.show()
 
     plt.plot(yss[halfway:], pss, ".")
     plt.ylabel("Ground truth magnitude")
     plt.ylabel("Predicted magnitude")
+    plt.savefig("figures/predicted_vs_ground_truth.png", dpi=300)
     plt.show()
