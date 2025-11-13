@@ -22,9 +22,9 @@ from astropt.model_utils import load_astropt
 
 if __name__ == "__main__":
     device = 'cpu'
-    if torch.cuda.is_available():
-        device = 'cuda'
-    elif torch.backends.mps.is_available():
+    # if torch.cuda.is_available():
+    #     device = 'cuda'
+    if torch.backends.mps.is_available():
         device = 'mps'
 
     print(f"Using device: {device}")
@@ -131,14 +131,26 @@ if __name__ == "__main__":
     pca = PCA(n_components=2)
     X_pca = pca.fit_transform(zss)
 
+    # Plot ground truth magnitude with PCA components
     vmax = np.percentile(yss, 95)
     plt.scatter(X_pca[:, 0], X_pca[:, 1], c=yss, vmax=vmax, cmap="viridis")
     plt.colorbar(label="mag_g")
     plt.savefig("figures/pca_mag_g.png", dpi=300)
     plt.show()
+    plt.clf()
 
+    # Plot predicted vs ground truth magnitude
+    reg = LinearRegression().fit(yss[halfway:].reshape(-1, 1), pss)
     plt.plot(yss[halfway:], pss, ".")
-    plt.ylabel("Ground truth magnitude")
+    plt.plot(
+        yss[halfway:],
+        reg.predict(yss[halfway:].reshape(-1, 1)),
+        "--",
+        color="red",
+        label=f"Linear fit: $pred = {reg.coef_[0]:.2f} \\cdot x + {reg.intercept_:.2f}$",
+    )
+    plt.xlabel("Ground truth magnitude")
     plt.ylabel("Predicted magnitude")
+    plt.legend()
     plt.savefig("figures/predicted_vs_ground_truth.png", dpi=300)
     plt.show()
